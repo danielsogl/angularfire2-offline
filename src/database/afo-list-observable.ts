@@ -1,27 +1,17 @@
 import { FirebaseListFactoryOpts } from 'angularfire2/interfaces';
 import { ReplaySubject } from 'rxjs';
 
-import { unwrap } from './database';
+import { EmulateList } from './emulate-list';
+import { EmulateQuery } from './emulate-query';
 import { OfflineWrite } from './offline-write';
 import { LocalUpdateService } from './local-update-service';
 const stringify = require('json-stringify-safe');
 
 export class AfoListObservable<T> extends ReplaySubject<T> {
-  orderKey: string;
   /**
    * The Firebase path used for the related FirebaseListObservable
    */
   path: string;
-  /**
-   * An array used to store write operations that require an initial value to be set
-   * in {@link value} before being applied
-   */
-  que = [];
-  query: AfoQuery = {};
-  queryReady = {
-    ready: false,
-    promise: undefined
-  };
   /**
    * Number of times updated
    */
@@ -34,6 +24,8 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * The value preceding the current value.
    */
   private previousValue: any;
+  private emulateQuery: EmulateQuery;
+  private emulateList: EmulateList;
   /**
    * Creates the {@link AfoListObservable}
    * @param ref a reference to the related FirebaseListObservable
@@ -46,24 +38,8 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     super(1);
     this.init();
   }
-   /**
-   * Emulates an offline write assuming the remote data has not changed
-   * @param method AngularFire2 write method to emulate
-   * @param value new value to write
-   * @param key optional key used with some write methods
-   */
   emulate(method, value = null, key?) {
-    const clonedValue = JSON.parse(JSON.stringify(value));
-    if (this.value === undefined) {
-      console.log('value was undefined');
-      this.que.push({
-        method: method,
-        value: clonedValue,
-        key: key
-      });
-      return;
-    }
-    this.processEmulation(method, clonedValue, key);
+    this.value = this.emulateList.emulate(this.value, method, value, key);
     this.updateSubscribers();
   }
   /**
@@ -71,15 +47,16 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * - Subscribes to the observable so that emulation is applied after there is an initial value
    */
   init() {
+    // TODO: replace with services
+    this.emulateQuery = new EmulateQuery();
+    this.emulateList = new EmulateList();
+
     this.path = this.ref.$ref.toString().substring(this.ref.$ref.database.ref().toString().length - 1);
-    this.setupQuery();
+    this.emulateQuery.setupQuery(this.options);
     this.subscribe((newValue: any) => {
       this.value = newValue;
-      if (this.que.length > 0) {
-        this.que.forEach(queTask => {
-          this.processEmulation(queTask.method, queTask.value, queTask.key);
-        });
-        this.que = [];
+      if (this.emulateList.que.length > 0) {
+        this.value = this.emulateList.processQue(this.value);
         this.updateSubscribers();
       }
     });
@@ -107,6 +84,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     const key = promise.key;
 
     this.emulate('push', value, key);
+
     OfflineWrite(
       promise,
       'object',
@@ -126,6 +104,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    */
   update(key: string, value: any) {
     this.emulate('update', value, key);
+
     const promise = this.ref.update(key, value);
     this.offlineWrite(promise, 'update', [key, value]);
     return promise;
@@ -141,118 +120,10 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    */
   remove(key?: string) {
     this.emulate('remove', null, key);
+
     const promise = this.ref.remove(key);
     this.offlineWrite(promise, 'remove', [key]);
     return promise;
-  }
-  private checkIfResolved(resolve) {
-    const notFinished = Object.keys(this.options.query)
-      .some(queryItem => !(queryItem in this.query));
-    if (!this.queryReady.ready && !notFinished) {
-      this.queryReady.ready = true;
-      resolve();
-    }
-  }
-  private emulateQuery() {
-    if (this.options.query === undefined) { return; }
-    this.queryReady.promise.then(() => {
-      console.log('query is ready', this.value);
-      // Using format similar to [angularfire2](https://goo.gl/0EPvHf)
-
-      // Check orderBy
-      if (this.query.orderByChild) {
-        this.orderKey = this.query.orderByChild;
-        this.orderByString(this.query.orderByChild);
-      } else if (this.query.orderByKey) {
-        this.orderKey = '$key';
-        this.orderByString('$key');
-      } else if (this.query.orderByPriority) {
-        // TODO
-      } else if (this.query.orderByValue) {
-        this.orderKey = '$value';
-        this.orderByString('$value');
-      }
-
-      // check equalTo
-      if (hasKey(this.query, 'equalTo')) {
-        if (hasKey(this.query.equalTo, 'value')) {
-          // TODO
-        } else {
-          this.equalTo(this.query.equalTo);
-        }
-
-        if (hasKey(this.query, 'startAt') || hasKey(this.query, 'endAt')) {
-          throw new Error('Query Error: Cannot use startAt or endAt with equalTo.');
-        }
-
-        // apply limitTos
-        if (!isNil(this.query.limitToFirst)) {
-          this.limitToFirst(this.query.limitToFirst);
-        }
-
-        if (!isNil(this.query.limitToLast)) {
-          this.limitToLast(this.query.limitToLast);
-        }
-
-        return;
-      }
-
-      // check startAt
-      if (hasKey(this.query, 'startAt')) {
-        if (hasKey(this.query.startAt, 'value')) {
-          // TODO
-        } else {
-          this.startAt(this.query.startAt);
-        }
-      }
-
-      if (hasKey(this.query, 'endAt')) {
-        if (hasKey(this.query.endAt, 'value')) {
-          // TODO
-        } else {
-          this.endAt(this.query.endAt);
-        }
-      }
-
-      if (!isNil(this.query.limitToFirst) && this.query.limitToLast) {
-        throw new Error('Query Error: Cannot use limitToFirst with limitToLast.');
-      }
-
-      // apply limitTos
-      if (!isNil(this.query.limitToFirst)) {
-        this.limitToFirst(this.query.limitToFirst);
-      }
-
-      if (!isNil(this.query.limitToLast)) {
-        this.limitToLast(this.query.limitToLast);
-      }
-    });
-  }
-  private endAt(endValue) {
-    let found = false;
-    for (let i = this.value.length - 1; !found && i > -1; i--) {
-      if (this.value[i] === endValue) {
-        this.value.splice(0, i + 1);
-        found = true;
-      }
-    }
-  }
-  private equalTo(value, key?) {
-    this.value.forEach((item, index) => {
-      if (item[this.orderKey] !== value) {
-        this.value.splice(0, index);
-      }
-    });
-  }
-  private limitToFirst(limit: number) {
-    if (limit < this.value.length) {
-      this.value = this.value.slice(0, limit);
-    }
-  }
-  private limitToLast(limit: number) {
-    if (limit < this.value.length) {
-      this.value = this.value.slice(-limit);
-    }
   }
    /**
    * Convenience method to save an offline write
@@ -272,106 +143,13 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
       args,
       this.localUpdateService);
   }
-  private orderByString(x) {
-    if (this.value === undefined) { return; }
-    this.value.sort((a, b) => {
-      const itemA = a[x].toLowerCase();
-      const itemB = b[x].toLowerCase();
-      if (itemA < itemB) { return -1; }
-      if (itemA > itemB) { return 1; }
-      return 0;
-    });
-  }
-  /**
-   * Calculates the result of a given emulation without updating subscribers of this Observable
-   *
-   * - this allows for the processing of many emulations before notifying subscribers
-   * @param method the AngularFire2 method being emulated
-   * @param value the new value to be used by the given method
-   * @param key can be used for remove and required for update
-   */
-  private processEmulation(method, value, key) {
-    if (this.value === null) {
-      this.value = [];
-    }
-    const newValue = unwrap(key, value, () => value !== null);
-    if (method === 'push') {
-      let found = false;
-      this.value.forEach((item, index) => {
-        if (item.$key === key) {
-          this.value[index] = newValue;
-          found = true;
-        }
-      });
-      if (!found) {
-        this.value.push(newValue);
-      }
-    } else if (method === 'update') {
-      let found = false;
-      this.value.forEach((item, index) => {
-        if (item.$key === key) {
-          found = true;
-          this.value[index] = newValue;
-        }
-      });
-      if (!found) {
-        this.value.push(newValue);
-      }
-    } else { // `remove` is the only remaining option
-      if (key === undefined) {
-        this.value = [];
-      } else {
-        this.value.forEach((item, index) => {
-          if (item.$key === key) {
-            this.value.splice(index, 1);
-          }
-        });
-      }
-    }
-  }
-  private setupQuery() {
-    if (this.options.query === undefined) { return; }
-    this.queryReady.promise = new Promise(resolve => {
-      Object.keys(this.options.query).forEach(queryKey => {
-        const queryItem = this.options.query[queryKey];
-        if (typeof queryItem === 'object' && 'subscribe' in queryItem) {
-          this.options.query[queryKey].subscribe(value => {
-            this.query[queryKey] = value;
-            this.checkIfResolved(resolve);
-          });
-        } else {
-          this.query[queryKey] = this.options.query[queryKey];
-        }
-      });
-      this.checkIfResolved(resolve);
-    });
-  }
-  private startAt(startValue: string | number | boolean) {
-    this.value.some((item, index) => {
-      if (item === this.options.query.startAt) {
-        this.value = this.value.slice(-this.value.length + index);
-        return true;
-      }
-    });
-  }
   /**
    * Sends the the current {@link value} to all subscribers
    */
   private updateSubscribers() {
-    console.log('updating subscribers');
-    this.emulateQuery();
-    this.uniqueNext(<any>this.value);
+    this.emulateQuery.emulateQuery(this.options, this.value).then(newValue => {
+      this.value = newValue;
+      this.uniqueNext(<any>this.value);
+    });
   }
-}
-
-export interface AfoQuery {
-  [key: string]: any;
-}
-
-export function isNil(obj: any): boolean {
-  return obj === undefined || obj === null;
-}
-
-export function hasKey(obj: Object, key: string): boolean {
-  return obj && obj[key] !== undefined;
 }
