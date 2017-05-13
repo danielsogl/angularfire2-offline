@@ -40,7 +40,7 @@ export class EmulateQuery {
   }
   /**
    * Emulates the query that would be applied by AngularFire2
-   * 
+   *
    * Using format similar to [angularfire2](https://goo.gl/0EPvHf)
    */
   emulateQuery(options: FirebaseListFactoryOpts, value) {
