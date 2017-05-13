@@ -8,12 +8,12 @@ import {
   FirebaseObjectObservable } from 'angularfire2/database';
 import { FirebaseListFactoryOpts, FirebaseObjectFactoryOpts } from 'angularfire2/interfaces';
 
-import { AfoListObservable } from './afo-list-observable';
-import { AfoObjectObservable } from './afo-object-observable';
+import { AfoListObservable } from './list/afo-list-observable';
+import { AfoObjectObservable } from './object/afo-object-observable';
 import { AngularFireOfflineCache, CacheItem, WriteCache } from './interfaces';
-import { LocalForageToken } from './localforage';
-import { LocalUpdateService } from './local-update-service';
-import { WriteComplete } from './offline-write';
+import { LocalForageToken } from './offline-storage/localforage';
+import { LocalUpdateService } from './offline-storage/local-update-service';
+import { WriteComplete } from './offline-storage/offline-write';
 
 /**
  * @whatItDoes Wraps the [AngularFire2](https://github.com/angular/angularfire2) database methods

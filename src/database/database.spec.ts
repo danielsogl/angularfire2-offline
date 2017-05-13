@@ -4,11 +4,11 @@ import { async, inject, TestBed } from '@angular/core/testing';
 import { AngularFireDatabase } from 'angularfire2/database';
 import { Subject } from 'rxjs/Rx';
 
-import { AfoListObservable } from './afo-list-observable';
-import { AfoObjectObservable } from './afo-object-observable';
+import { AfoListObservable } from './list/afo-list-observable';
+import { AfoObjectObservable } from './object/afo-object-observable';
 import { AngularFireOfflineDatabase } from './database';
-import { LocalForageToken } from './localforage';
-import { LocalUpdateService } from './local-update-service';
+import { LocalForageToken } from './offline-storage/localforage';
+import { LocalUpdateService } from './offline-storage/local-update-service';
 import { CacheItem, WriteCache } from './interfaces';
 
 describe('Service: AngularFireOfflineDatabase', () => {

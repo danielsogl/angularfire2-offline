@@ -9,7 +9,11 @@ import { AfoListObservable, AngularFireOfflineDatabase } from 'angularfire2-offl
 export class WriteListComponent {
   groceries: AfoListObservable<any[]>;
   constructor(private afoDatabase: AngularFireOfflineDatabase) {
-    this.groceries = this.afoDatabase.list('/groceries');
+    this.groceries = this.afoDatabase.list('/groceries', {
+      query: {
+        limitToFirst: 5
+      }
+    });
   }
   addItem(newName: string) {
     this.groceries.push({ text: newName });

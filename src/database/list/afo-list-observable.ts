@@ -3,8 +3,8 @@ import { ReplaySubject } from 'rxjs';
 
 import { EmulateList } from './emulate-list';
 import { EmulateQuery } from './emulate-query';
-import { OfflineWrite } from './offline-write';
-import { LocalUpdateService } from './local-update-service';
+import { OfflineWrite } from '../offline-storage/offline-write';
+import { LocalUpdateService } from '../offline-storage/local-update-service';
 const stringify = require('json-stringify-safe');
 
 export class AfoListObservable<T> extends ReplaySubject<T> {

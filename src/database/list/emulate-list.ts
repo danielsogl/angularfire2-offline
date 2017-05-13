@@ -1,4 +1,4 @@
-import { unwrap } from './database';
+import { unwrap } from '../database';
 
 export class EmulateList {
   observableValue: any[];
