@@ -1,26 +1,13 @@
 import { FirebaseListFactoryOpts } from 'angularfire2/interfaces';
+import { Observable } from 'rxjs/Observable';
 
 export class EmulateQuery {
   orderKey: string;
   observableValue: any[];
   observableOptions: FirebaseListFactoryOpts;
   query: AfoQuery = {};
-  queryReady = {
-    ready: false,
-    promise: undefined
-  };
+  queryReady: Promise<{}[]>;
   constructor() { }
-  /**
-   *
-   */
-  checkIfResolved(resolve) {
-    const notFinished = Object.keys(this.observableOptions.query)
-      .some(queryItem => !(queryItem in this.query));
-    if (!this.queryReady.ready && !notFinished) {
-      this.queryReady.ready = true;
-      resolve();
-    }
-  }
   /**
    *
    */
@@ -29,21 +16,27 @@ export class EmulateQuery {
     this.observableOptions = options;
     // Ignore empty queries
     if (this.observableOptions.query === undefined) { return; }
-
-    this.queryReady.promise = new Promise(resolve => {
-      Object.keys(this.observableOptions.query).forEach(queryKey => {
-        const queryItem = this.observableOptions.query[queryKey];
-        if (typeof queryItem === 'object' && 'subscribe' in queryItem) {
+    // Loop through query items
+    this.queryReady = Promise.all(Object.keys(this.observableOptions.query).map(queryKey => {
+      return new Promise(resolve => {
+        /**
+         * If the query item's value is an observable, then we need to listen to that and update
+         * the query when it updates.
+         * @see https://goo.gl/mNVjGN
+         */
+        if (this.observableOptions.query[queryKey] instanceof Observable) {
+          // TODO: this should unsubscribe at some point
           this.observableOptions.query[queryKey].subscribe(value => {
             this.query[queryKey] = value;
-            this.checkIfResolved(resolve);
+            resolve();
           });
+        // Otherwise it's a regualr query (e.g. not an Observable)
         } else {
           this.query[queryKey] = this.observableOptions.query[queryKey];
+          resolve();
         }
       });
-      this.checkIfResolved(resolve);
-    });
+    }));
   }
   /**
    * Emulates the query that would be applied by AngularFire2
@@ -57,7 +50,7 @@ export class EmulateQuery {
     if (this.observableOptions.query === undefined || value === undefined) {
       return new Promise(resolve => resolve(this.observableValue));
     }
-    return this.queryReady.promise.then(() => {
+    return this.queryReady.then(() => {
       // Check orderBy
       if (this.query.orderByChild) {
         this.orderKey = this.query.orderByChild;

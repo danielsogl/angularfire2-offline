@@ -152,7 +152,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    */
   private updateSubscribers() {
     this.emulateQuery.emulateQuery(this.options, this.value).then(newValue => {
-      this.value = newValue;
+      this.value = <any>newValue;
       this.uniqueNext(<any>this.value);
     });
   }
