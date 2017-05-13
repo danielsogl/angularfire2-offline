@@ -9,7 +9,11 @@ export class EmulateQuery {
   queryReady: Promise<{}[]>;
   constructor() { }
   /**
+   * Gets the latest value of all query items, including Observable queries.
    *
+   * If the query item's value is an observable, then we need to listen to that and update
+   * the query when it updates.
+   * @see https://goo.gl/mNVjGN
    */
   setupQuery(options: FirebaseListFactoryOpts) {
     // Store passed options
@@ -19,11 +23,7 @@ export class EmulateQuery {
     // Loop through query items
     this.queryReady = Promise.all(Object.keys(this.observableOptions.query).map(queryKey => {
       return new Promise(resolve => {
-        /**
-         * If the query item's value is an observable, then we need to listen to that and update
-         * the query when it updates.
-         * @see https://goo.gl/mNVjGN
-         */
+        // Checks if the query item is an observable
         if (this.observableOptions.query[queryKey] instanceof Observable) {
           // TODO: this should unsubscribe at some point
           this.observableOptions.query[queryKey].subscribe(value => {
