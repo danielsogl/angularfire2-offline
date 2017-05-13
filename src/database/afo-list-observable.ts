@@ -6,7 +6,6 @@ import { OfflineWrite } from './offline-write';
 import { LocalUpdateService } from './local-update-service';
 const stringify = require('json-stringify-safe');
 
-
 export class AfoListObservable<T> extends ReplaySubject<T> {
   orderKey: string;
   /**
@@ -67,7 +66,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     this.processEmulation(method, clonedValue, key);
     this.updateSubscribers();
   }
-   /**
+  /**
    * - Gets the path of the reference
    * - Subscribes to the observable so that emulation is applied after there is an initial value
    */
@@ -131,7 +130,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     this.offlineWrite(promise, 'update', [key, value]);
     return promise;
   }
-    /**
+  /**
    * Wraps the AngularFire2 FirebaseListObservable [remove](https://goo.gl/MkZTtv) method
    *
    * - Emulates a remove locally
