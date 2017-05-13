@@ -3,8 +3,8 @@ import { Injectable, ReflectiveInjector } from '@angular/core';
 import { async, inject, TestBed } from '@angular/core/testing';
 import { Observable, ReplaySubject, Subject } from 'rxjs/Rx';
 
-import { AfoObjectObservable } from '../src/afo-object-observable';
-import { LocalUpdateService } from '../src/local-update-service';
+import { AfoObjectObservable } from './afo-object-observable';
+import { LocalUpdateService } from './local-update-service';
 
 describe('Object Observable', () => {
   let objectObservable: AfoObjectObservable<any>;
@@ -86,7 +86,7 @@ describe('Object Observable', () => {
         done();
       }
     });
-    objectObservable.next('a value');
+    objectObservable.uniqueNext('a value');
   });
 
   it('should emulate a que for update', done => {
@@ -107,7 +107,7 @@ describe('Object Observable', () => {
         done();
       }
     });
-    objectObservable.next({
+    objectObservable.uniqueNext({
       title: 'old title',
       key2: 'other value'
     });

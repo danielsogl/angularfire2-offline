@@ -1,8 +1,10 @@
+import * as firebase from 'firebase/app';
 import { ReplaySubject } from 'rxjs';
 
 import { unwrap } from './database';
 import { OfflineWrite } from './offline-write';
 import { LocalUpdateService } from './local-update-service';
+const stringify = require('json-stringify-safe');
 
 export class AfoObjectObservable<T> extends ReplaySubject<T> {
   /**
@@ -15,9 +17,17 @@ export class AfoObjectObservable<T> extends ReplaySubject<T> {
    */
   que = [];
   /**
+   * Number of times updated
+   */
+  updated: number;
+  /**
    * The current value of the {@link AfoObjectObservable}
    */
   value: any;
+  /**
+   * The value preceding the current value.
+   */
+  private previousValue: any;
   /**
    * Creates the {@link AfoObjectObservable}
    * @param ref a reference to the related FirebaseObjectObservable
@@ -107,6 +117,16 @@ export class AfoObjectObservable<T> extends ReplaySubject<T> {
     return promise;
   }
   /**
+   * Only calls next if the new value is unique
+   */
+  uniqueNext(newValue) {
+    if (this.updated > 1 || (stringify(this.previousValue) !== stringify(newValue) )) {
+      this.previousValue = newValue;
+      this.next(newValue);
+      this.updated++;
+    }
+  }
+  /**
    * Convenience method to save an offline write
    *
    * @param promise
@@ -142,6 +162,6 @@ export class AfoObjectObservable<T> extends ReplaySubject<T> {
    * Sends the the current {@link value} to all subscribers
    */
   private updateSubscribers() {
-    this.next(unwrap(this.ref.$ref.key, this.value, () => this.value !== null));
+    this.uniqueNext(unwrap(this.ref.$ref.key, this.value, () => this.value !== null));
   }
 }

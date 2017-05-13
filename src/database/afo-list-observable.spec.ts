@@ -3,8 +3,8 @@ import { Injectable, ReflectiveInjector } from '@angular/core';
 import { async, inject, TestBed } from '@angular/core/testing';
 import { Observable, ReplaySubject, Subject } from 'rxjs/Rx';
 
-import { AfoListObservable } from '../src/afo-list-observable';
-import { LocalUpdateService } from '../src/local-update-service';
+import { AfoListObservable } from './afo-list-observable';
+import { LocalUpdateService } from './local-update-service';
 
 describe('List Observable', () => {
   let listObservable: AfoListObservable<any>;
@@ -29,9 +29,10 @@ describe('List Observable', () => {
       }
     }};
     let pushPromise;
-    ref.$ref.push = (value, callback) => {
-      callback();
-      return 'key-1';
+    ref.$ref.push = (value) => {
+      let key = 'key-1';
+      pushPromise = Promise.resolve(key);
+      return pushPromise;
     };
     mockLocalForageService = new MockLocalForageService();
     localUpdateService = new LocalUpdateService(mockLocalForageService);
@@ -39,7 +40,8 @@ describe('List Observable', () => {
 
   it('should push', done => {
     listObservable = new AfoListObservable<any>(ref, localUpdateService);
-    listObservable.push('new value').then(() => {
+    listObservable.push('new value').then((key) => {
+      expect(key).toBe('key-1');
       done();
     });
   });
@@ -200,7 +202,7 @@ describe('List Observable', () => {
       expect(x[0].$exists()).toBe(true);
       done();
     });
-    listObservable.next([]);
+    listObservable.uniqueNext([]);
   });
 });
 

@@ -1,10 +1,11 @@
 import { FirebaseListFactoryOpts } from 'angularfire2/interfaces';
-import * as utils from 'angularfire2/utils';
 import { ReplaySubject } from 'rxjs';
 
 import { unwrap } from './database';
 import { OfflineWrite } from './offline-write';
 import { LocalUpdateService } from './local-update-service';
+const stringify = require('json-stringify-safe');
+
 
 export class AfoListObservable<T> extends ReplaySubject<T> {
   orderKey: string;
@@ -22,10 +23,18 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     ready: false,
     promise: undefined
   };
-   /**
+  /**
+   * Number of times updated
+   */
+  updated: number;
+  /**
    * The current value of the {@link AfoListObservable}
    */
   value: any[];
+  /**
+   * The value preceding the current value.
+   */
+  private previousValue: any;
   /**
    * Creates the {@link AfoListObservable}
    * @param ref a reference to the related FirebaseListObservable
@@ -76,7 +85,17 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
       }
     });
   }
-    /**
+  /**
+   * Only calls next if the new value is unique
+   */
+  uniqueNext(newValue) {
+    if (this.updated > 1 || (stringify(this.previousValue) !== stringify(newValue)) ) {
+      this.previousValue = newValue;
+      this.next(newValue);
+      this.updated++;
+    }
+  }
+  /**
    * Wraps the AngularFire2 FirebaseListObservable [push](https://goo.gl/nTe7C0) method
    *
    * - Emulates a push locally
@@ -85,11 +104,9 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * completes
    */
   push(value: any) {
-    let resolve;
-    let promise = new Promise(r => resolve = r);
-    const key = this.ref.$ref.push(value, () => {
-      resolve();
-    }).key;
+    let promise = this.ref.$ref.push(value);
+    const key = promise.key;
+
     this.emulate('push', value, key);
     OfflineWrite(
       promise,
@@ -108,7 +125,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * - Saves the write locally in case the browser is refreshed before the AngularFire2 promise
    * completes
    */
-  update(key: string, value: any): firebase.Promise<void> {
+  update(key: string, value: any) {
     this.emulate('update', value, key);
     const promise = this.ref.update(key, value);
     this.offlineWrite(promise, 'update', [key, value]);
@@ -123,7 +140,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * completes
    * @param remove if you omit the `key` parameter from `.remove()` it deletes the entire list.
    */
-  remove(key?: string): firebase.Promise<void> {
+  remove(key?: string) {
     this.emulate('remove', null, key);
     const promise = this.ref.remove(key);
     this.offlineWrite(promise, 'remove', [key]);
@@ -158,23 +175,23 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
       }
 
       // check equalTo
-      if (utils.hasKey(this.query, 'equalTo')) {
-        if (utils.hasKey(this.query.equalTo, 'value')) {
+      if (hasKey(this.query, 'equalTo')) {
+        if (hasKey(this.query.equalTo, 'value')) {
           // TODO
         } else {
           this.equalTo(this.query.equalTo);
         }
 
-        if (utils.hasKey(this.query, 'startAt') || utils.hasKey(this.query, 'endAt')) {
+        if (hasKey(this.query, 'startAt') || hasKey(this.query, 'endAt')) {
           throw new Error('Query Error: Cannot use startAt or endAt with equalTo.');
         }
 
         // apply limitTos
-        if (!utils.isNil(this.query.limitToFirst)) {
+        if (!isNil(this.query.limitToFirst)) {
           this.limitToFirst(this.query.limitToFirst);
         }
 
-        if (!utils.isNil(this.query.limitToLast)) {
+        if (!isNil(this.query.limitToLast)) {
           this.limitToLast(this.query.limitToLast);
         }
 
@@ -182,32 +199,32 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
       }
 
       // check startAt
-      if (utils.hasKey(this.query, 'startAt')) {
-        if (utils.hasKey(this.query.startAt, 'value')) {
+      if (hasKey(this.query, 'startAt')) {
+        if (hasKey(this.query.startAt, 'value')) {
           // TODO
         } else {
           this.startAt(this.query.startAt);
         }
       }
 
-      if (utils.hasKey(this.query, 'endAt')) {
-        if (utils.hasKey(this.query.endAt, 'value')) {
+      if (hasKey(this.query, 'endAt')) {
+        if (hasKey(this.query.endAt, 'value')) {
           // TODO
         } else {
           this.endAt(this.query.endAt);
         }
       }
 
-      if (!utils.isNil(this.query.limitToFirst) && this.query.limitToLast) {
+      if (!isNil(this.query.limitToFirst) && this.query.limitToLast) {
         throw new Error('Query Error: Cannot use limitToFirst with limitToLast.');
       }
 
       // apply limitTos
-      if (!utils.isNil(this.query.limitToFirst)) {
+      if (!isNil(this.query.limitToFirst)) {
         this.limitToFirst(this.query.limitToFirst);
       }
 
-      if (!utils.isNil(this.query.limitToLast)) {
+      if (!isNil(this.query.limitToLast)) {
         this.limitToLast(this.query.limitToLast);
       }
     });
@@ -247,7 +264,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * @param type the AngularFire2 method being called
    * @param args an optional array of arguments used to call an AngularFire2 method taking the form of [newValue, options]
    */
-  private offlineWrite(promise: firebase.Promise<void>, type: string, args: any[]) {
+  private offlineWrite(promise, type: string, args: any[]) {
     OfflineWrite(
       promise,
       'list',
@@ -344,10 +361,18 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
   private updateSubscribers() {
     console.log('updating subscribers');
     this.emulateQuery();
-    this.next(<any>this.value);
+    this.uniqueNext(<any>this.value);
   }
 }
 
 export interface AfoQuery {
   [key: string]: any;
+}
+
+export function isNil(obj: any): boolean {
+  return obj === undefined || obj === null;
+}
+
+export function hasKey(obj: Object, key: string): boolean {
+  return obj && obj[key] !== undefined;
 }
