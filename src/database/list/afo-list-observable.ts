@@ -1,11 +1,11 @@
 import { FirebaseListFactoryOpts } from 'angularfire2/interfaces';
+import * as stringify from 'json-stringify-safe';
 import { ReplaySubject } from 'rxjs';
 
 import { EmulateList } from './emulate-list';
 import { EmulateQuery } from './emulate-query';
-import { OfflineWrite } from '../offline-storage/offline-write';
 import { LocalUpdateService } from '../offline-storage/local-update-service';
-const stringify = require('json-stringify-safe');
+import { OfflineWrite } from '../offline-storage/offline-write';
 
 export class AfoListObservable<T> extends ReplaySubject<T> {
   /**
@@ -38,6 +38,15 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     super(1);
     this.init();
   }
+  /**
+   * Emulates what would happen if the given write were to occur and shows the user that value.
+   *
+   * - If the state of the Firebase database is different than what we have during emulation,
+   * then Firebase's state will win.
+   * - For example, if your device is pushing to a list while offline it will be emulated on your
+   * device immediately, but if another device makes a push to the same reference before your
+   * device reconnects, then the other device's push will show first in the list.
+   */
   emulate(method, value = null, key?) {
     this.value = this.emulateList.emulate(this.value, method, value, key);
     this.updateSubscribers();
@@ -53,6 +62,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
 
     this.path = this.ref.$ref.toString().substring(this.ref.$ref.database.ref().toString().length - 1);
     this.emulateQuery.setupQuery(this.options);
+
     this.subscribe((newValue: any) => {
       this.value = newValue;
       if (this.emulateList.que.length > 0) {
@@ -80,15 +90,12 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * completes
    */
   push(value: any) {
-    let promise = this.ref.$ref.push(value);
-    const key = promise.key;
-
-    this.emulate('push', value, key);
-
+    const promise = this.ref.$ref.push(value);
+    this.emulate('push', value, promise.key);
     OfflineWrite(
       promise,
       'object',
-      `${this.path}/${key}`,
+      `${this.path}/${promise.key}`,
       'set',
       [value],
       this.localUpdateService);
@@ -120,7 +127,6 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    */
   remove(key?: string) {
     this.emulate('remove', null, key);
-
     const promise = this.ref.remove(key);
     this.offlineWrite(promise, 'remove', [key]);
     return promise;
@@ -128,9 +134,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    /**
    * Convenience method to save an offline write
    *
-   * @param promise
-   * [the promise](https://goo.gl/5VLgQm)
-   * returned by calling an AngularFire2 method
+   * @param promise [the promise](https://goo.gl/5VLgQm) returned by calling an AngularFire2 method
    * @param type the AngularFire2 method being called
    * @param args an optional array of arguments used to call an AngularFire2 method taking the form of [newValue, options]
    */

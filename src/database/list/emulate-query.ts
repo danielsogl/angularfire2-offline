@@ -10,7 +10,9 @@ export class EmulateQuery {
     promise: undefined
   };
   constructor() { }
-
+  /**
+   *
+   */
   checkIfResolved(resolve) {
     const notFinished = Object.keys(this.observableOptions.query)
       .some(queryItem => !(queryItem in this.query));
@@ -22,8 +24,10 @@ export class EmulateQuery {
   /**
    *
    */
-  setupQuery(options) {
+  setupQuery(options: FirebaseListFactoryOpts) {
+    // Store passed options
     this.observableOptions = options;
+    // Ignore empty queries
     if (this.observableOptions.query === undefined) { return; }
 
     this.queryReady.promise = new Promise(resolve => {
@@ -41,17 +45,19 @@ export class EmulateQuery {
       this.checkIfResolved(resolve);
     });
   }
-  emulateQuery(options, value) {
+  /**
+   * Emulates the query that would be applied by AngularFire2
+   * 
+   * Using format similar to [angularfire2](https://goo.gl/0EPvHf)
+   */
+  emulateQuery(options: FirebaseListFactoryOpts, value) {
     this.observableOptions = options;
     this.observableValue = value;
     // TODO: check if value === undefined causes unintended results
     if (this.observableOptions.query === undefined || value === undefined) {
-      return new Promise(r => r(this.observableValue));
+      return new Promise(resolve => resolve(this.observableValue));
     }
     return this.queryReady.promise.then(() => {
-      // console.log('query is ready', this.observableValue);
-      // Using format similar to [angularfire2](https://goo.gl/0EPvHf)
-
       // Check orderBy
       if (this.query.orderByChild) {
         this.orderKey = this.query.orderByChild;
@@ -113,7 +119,6 @@ export class EmulateQuery {
 
       // apply limitTos
       if (!isNil(this.query.limitToFirst)) {
-        console.log('applying');
         this.limitToFirst(this.query.limitToFirst);
       }
 
