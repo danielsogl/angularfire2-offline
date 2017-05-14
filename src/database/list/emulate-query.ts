@@ -19,7 +19,9 @@ export class EmulateQuery {
     // Store passed options
     this.observableOptions = options;
     // Ignore empty queries
-    if (this.observableOptions.query === undefined) { return; }
+    if (this.observableOptions === undefined || this.observableOptions.query === undefined) {
+      return;
+    }
     // Loop through query items
     this.queryReady = Promise.all(Object.keys(this.observableOptions.query).map(queryKey => {
       return new Promise(resolve => {
@@ -47,7 +49,9 @@ export class EmulateQuery {
     this.observableOptions = options;
     this.observableValue = value;
     // TODO: check if value === undefined causes unintended results
-    if (this.observableOptions.query === undefined || value === undefined) {
+    if (this.observableOptions === undefined
+      || this.observableOptions.query === undefined
+      || value === undefined) {
       return new Promise(resolve => resolve(this.observableValue));
     }
     return this.queryReady.then(() => {

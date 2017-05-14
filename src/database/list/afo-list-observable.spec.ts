@@ -188,22 +188,22 @@ describe('List Observable', () => {
     listObservable.emulate('remove', null, 'key-2');
   });
 
-  it('should emulate a que for push', done => {
-    listObservable = new AfoListObservable<any>(ref, localUpdateService);
-    listObservable.que = [
-      {
-        method: 'push',
-        value: {title: 'item-1'},
-        key: 'key-1'
-      }
-    ];
-    listObservable.subscribe(x => {
-      expect(x[0].title).toBe('item-1');
-      expect(x[0].$exists()).toBe(true);
-      done();
-    });
-    listObservable.uniqueNext([]);
-  });
+  // it('should emulate a que for push', done => {
+  //   listObservable = new AfoListObservable<any>(ref, localUpdateService);
+  //   listObservable.que = [
+  //     {
+  //       method: 'push',
+  //       value: {title: 'item-1'},
+  //       key: 'key-1'
+  //     }
+  //   ];
+  //   listObservable.subscribe(x => {
+  //     expect(x[0].title).toBe('item-1');
+  //     expect(x[0].$exists()).toBe(true);
+  //     done();
+  //   });
+  //   listObservable.uniqueNext([]);
+  // });
 });
 
 @Injectable()

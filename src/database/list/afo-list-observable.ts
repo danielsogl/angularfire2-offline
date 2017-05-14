@@ -34,7 +34,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
   constructor(
     private ref,
     private localUpdateService: LocalUpdateService,
-    private options: FirebaseListFactoryOpts) {
+    private options?: FirebaseListFactoryOpts) {
     super(1);
     this.init();
   }
