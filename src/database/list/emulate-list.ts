@@ -24,7 +24,6 @@ export class EmulateList {
 
     const clonedValue = JSON.parse(JSON.stringify(value));
     if (this.observableValue === undefined) {
-      console.log('value was undefined');
       this.que.push({
         method: method,
         value: clonedValue,

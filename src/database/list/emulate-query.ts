@@ -45,34 +45,30 @@ export class EmulateQuery {
    *
    * Using format similar to [angularfire2](https://goo.gl/0EPvHf)
    */
-  emulateQuery(options: FirebaseListFactoryOpts, value) {
-    this.observableOptions = options;
+  emulateQuery(value) {
     this.observableValue = value;
     // TODO: check if value === undefined causes unintended results
     if (this.observableOptions === undefined
       || this.observableOptions.query === undefined
-      || value === undefined) {
+      || this.observableValue === undefined) {
       return new Promise(resolve => resolve(this.observableValue));
     }
     return this.queryReady.then(() => {
       // Check orderBy
       if (this.query.orderByChild) {
-        this.orderKey = this.query.orderByChild;
-        this.orderByString(this.query.orderByChild);
+        this.orderBy(this.query.orderByChild);
       } else if (this.query.orderByKey) {
-        this.orderKey = '$key';
-        this.orderByString('$key');
+        this.orderBy('$key');
       } else if (this.query.orderByPriority) {
         // TODO
       } else if (this.query.orderByValue) {
-        this.orderKey = '$value';
-        this.orderByString('$value');
+        this.orderBy('$value');
       }
 
       // check equalTo
       if (hasKey(this.query, 'equalTo')) {
         if (hasKey(this.query.equalTo, 'value')) {
-          // TODO
+          this.equalTo(this.query.equalTo.value, this.query.equalTo.key);
         } else {
           this.equalTo(this.query.equalTo);
         }
@@ -96,7 +92,7 @@ export class EmulateQuery {
       // check startAt
       if (hasKey(this.query, 'startAt')) {
         if (hasKey(this.query.startAt, 'value')) {
-          // TODO
+          this.startAt(this.query.startAt.value, this.query.startAt.key);
         } else {
           this.startAt(this.query.startAt);
         }
@@ -104,7 +100,7 @@ export class EmulateQuery {
 
       if (hasKey(this.query, 'endAt')) {
         if (hasKey(this.query.endAt, 'value')) {
-          // TODO
+          this.endAt(this.query.endAt.value, this.query.endAt.key);
         } else {
           this.endAt(this.query.endAt);
         }
@@ -126,21 +122,13 @@ export class EmulateQuery {
       return this.observableValue;
     });
   }
-  private endAt(endValue) {
-    let found = false;
-    for (let i = this.observableValue.length - 1; !found && i > -1; i--) {
-      if (this.observableValue[i] === endValue) {
-        this.observableValue.splice(0, i + 1);
-        found = true;
-      }
-    }
+  private endAt(value, key?) {
+    const orderingBy = key ? key : this.orderKey;
+    this.observableValue = this.observableValue.filter(item => item[orderingBy] <= value);
   }
   private equalTo(value, key?) {
-    this.observableValue.forEach((item, index) => {
-      if (item[this.orderKey] !== value) {
-        this.observableValue.splice(0, index);
-      }
-    });
+    const orderingBy = key ? key : this.orderKey;
+    this.observableValue = this.observableValue.filter(item => item[orderingBy] === value);
   }
   private limitToFirst(limit: number) {
     if (limit < this.observableValue.length) {
@@ -152,23 +140,19 @@ export class EmulateQuery {
       this.observableValue = this.observableValue.slice(-limit);
     }
   }
-  private orderByString(x) {
-    if (this.observableValue === undefined) { return; }
+  private orderBy(x) {
+    this.orderKey = x;
     this.observableValue.sort((a, b) => {
-      const itemA = a[x].toLowerCase();
-      const itemB = b[x].toLowerCase();
+      const itemA = a[x];
+      const itemB = b[x];
       if (itemA < itemB) { return -1; }
       if (itemA > itemB) { return 1; }
       return 0;
     });
   }
-  private startAt(startValue: string | number | boolean) {
-    this.observableValue.some((item, index) => {
-      if (item === this.observableOptions.query.startAt) {
-        this.observableValue = this.observableValue.slice(-this.observableValue.length + index);
-        return true;
-      }
-    });
+  private startAt(value, key?) {
+    const orderingBy = key ? key : this.orderKey;
+    this.observableValue = this.observableValue.filter(item => item[orderingBy] >= value);
   }
 }
 

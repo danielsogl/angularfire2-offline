@@ -151,7 +151,7 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * Sends the the current {@link value} to all subscribers
    */
   private updateSubscribers() {
-    this.emulateQuery.emulateQuery(this.options, this.value).then(newValue => {
+    this.emulateQuery.emulateQuery(this.value).then(newValue => {
       this.value = <any>newValue;
       this.uniqueNext(<any>this.value);
     });
