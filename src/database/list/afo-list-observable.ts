@@ -81,6 +81,15 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
     }
   }
   /**
+   * Unsubscribes from child observables first, followed by the default ReplaySubject unsubscribe
+   */
+  unsubscribe() {
+    this.emulateQuery.destroy();
+    this.isStopped = true;
+    this.closed = true;
+    this.observers = null;
+  }
+  /**
    * Wraps the AngularFire2 FirebaseListObservable [push](https://goo.gl/nTe7C0) method
    *
    * - Emulates a push locally

@@ -7,7 +7,12 @@ export class EmulateQuery {
   observableOptions: FirebaseListFactoryOpts;
   query: AfoQuery = {};
   queryReady: Promise<{}[]>;
+  subscriptions = [];
   constructor() { }
+  destroy() {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subscriptions = [];
+  }
   /**
    * Gets the latest value of all query items, including Observable queries.
    *
@@ -27,12 +32,13 @@ export class EmulateQuery {
       return new Promise(resolve => {
         // Checks if the query item is an observable
         if (this.observableOptions.query[queryKey] instanceof Observable) {
-          // TODO: this should unsubscribe at some point
-          this.observableOptions.query[queryKey].subscribe(value => {
-            this.query[queryKey] = value;
-            resolve();
-          });
-        // Otherwise it's a regualr query (e.g. not an Observable)
+          this.subscriptions.push(
+            this.observableOptions.query[queryKey].subscribe(value => {
+              this.query[queryKey] = value;
+              resolve();
+            })
+          );
+        // Otherwise it's a regular query (e.g. not an Observable)
         } else {
           this.query[queryKey] = this.observableOptions.query[queryKey];
           resolve();
