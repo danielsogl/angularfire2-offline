@@ -56,7 +56,6 @@ export class AfoListObservable<T> extends ReplaySubject<T> {
    * - Subscribes to the observable so that emulation is applied after there is an initial value
    */
   init() {
-    // TODO: replace with services
     this.emulateQuery = new EmulateQuery();
     this.emulateList = new EmulateList();
 

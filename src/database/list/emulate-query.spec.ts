@@ -177,7 +177,25 @@ describe('Emulate Query', () => {
         {$value: 5, someKey: 4},
         {$value: 7, someKey: 1}
       ]
-    }
+    },
+    // Order by priority
+    {
+      options: {query: { orderByPriority: true }},
+      value: [
+        {$value: 3, $priority: 23},
+        {$value: 7, $priority: 1000},
+        {$value: 2, $priority: 10},
+        {$value: 1},
+        {$value: 5}
+      ],
+      expected: [
+        {$value: 2, $priority: 10},
+        {$value: 3, $priority: 23},
+        {$value: 7, $priority: 1000},
+        {$value: 1},
+        {$value: 5}
+      ]
+    },
   ].forEach(scenario => {
     const queryText = scenario.options && scenario.options.query
       ? readable(scenario.options.query) : 'an undefined value';

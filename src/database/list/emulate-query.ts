@@ -47,7 +47,6 @@ export class EmulateQuery {
    */
   emulateQuery(value) {
     this.observableValue = value;
-    // TODO: check if value === undefined causes unintended results
     if (this.observableOptions === undefined
       || this.observableOptions.query === undefined
       || this.observableValue === undefined) {
@@ -60,7 +59,7 @@ export class EmulateQuery {
       } else if (this.query.orderByKey) {
         this.orderBy('$key');
       } else if (this.query.orderByPriority) {
-        // TODO
+        this.orderBy('$priority');
       } else if (this.query.orderByValue) {
         this.orderBy('$value');
       }

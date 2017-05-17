@@ -39,7 +39,7 @@ describe('Service: AngularFireOfflineDatabase', () => {
     inject([AngularFireOfflineDatabase], (service: AngularFireOfflineDatabase) => {
       const key = '/slug-2';
       let newValue = [
-        { val: () => { return 'xyz'; } }
+        { val: () => { return 'xyz'; }, getPriority: () => {} }
       ];
       service.processing.current = false;
       service.list(key).subscribe(list => {
@@ -55,7 +55,7 @@ describe('Service: AngularFireOfflineDatabase', () => {
     inject([AngularFireOfflineDatabase], (service: AngularFireOfflineDatabase) => {
       const key = '/slug-2';
       let newValue = [
-        { val: () => { return 'xyz'; } }
+        { val: () => { return 'xyz'; }, getPriority: () => {} }
       ];
       service.list(key);
       mockAngularFireDatabase.update('list', newValue);

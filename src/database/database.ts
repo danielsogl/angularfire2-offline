@@ -244,7 +244,10 @@ export class AngularFireOfflineDatabase {
    */
   private setList(key: string, array: Array<any>) {
     const primaryValue = array.reduce((p, c, i) => {
-      this.localForage.setItem(`read/object${key}/${c.key}`, c.val());
+      const itemValue = c.val();
+      const priority = c.getPriority();
+      if (priority) { itemValue.$priority = priority; }
+      this.localForage.setItem(`read/object${key}/${c.key}`, itemValue);
       p[i] = c.key;
       return p;
     }, []);
@@ -265,6 +268,7 @@ export class AngularFireOfflineDatabase {
   private setupList(key: string, options: FirebaseListFactoryOpts = {}) {
     // Get Firebase ref
     options.preserveSnapshot = true;
+    const usePriority = options && options.query && options.query.orderByPriority;
     const ref: FirebaseListObservable<any[]> = this.af.list(key, options);
     // Create cache
     this.listCache[key] = {
@@ -275,7 +279,10 @@ export class AngularFireOfflineDatabase {
     // Firebase
     ref.subscribe(value => {
       this.listCache[key].loaded = true;
-      const cacheValue = value.map(snap => unwrap(snap.key, snap.val(), () => !isNil(snap.val())));
+      const cacheValue = value.map(snap => {
+        const priority = usePriority ? snap.getPriority() : null;
+        return unwrap(snap.key, snap.val(), () => !isNil(snap.val()), priority);
+      });
       if (this.processing.current) {
         this.processing.listCache[key] = cacheValue;
       } else {
@@ -312,12 +319,13 @@ export function isNil(obj: any): boolean {
 /**
  * Adds the properies of `$key`, `$value`, `$exists` as required by AngularFire2
  */
-export function unwrap(key: string, value: any, exists) {
+export function unwrap(key: string, value: any, exists, priority?) {
   let unwrapped = !isNil(value) ? value : { $value: null };
   if ((/string|number|boolean/).test(typeof value)) {
     unwrapped = { $value: value };
   }
   unwrapped.$exists = exists;
   unwrapped.$key = key;
+  if (priority) { unwrapped.$priority = priority; }
   return unwrapped;
 }
