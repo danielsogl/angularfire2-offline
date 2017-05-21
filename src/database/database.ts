@@ -152,7 +152,34 @@ export class AngularFireOfflineDatabase {
     this.listCache = {};
     this.localForage.clear();
   };
+  private getListFirebase(key: string) {
+    const options =  this.listCache[key].firebaseOptions;
+    if (this.listCache[key].sub) {
+      this.listCache[key].sub.complete();
+    }
+    const usePriority = options && options.query && options.query.orderByPriority;
+    // Get Firebase ref
+    const ref: FirebaseListObservable<any[]> = this.af.list(key, options);
+    // Create cache
+    this.listCache[key].sub = new InternalListObservable(ref, this.localUpdateService);
 
+    // Firebase
+    const subscription = ref.subscribe(value => {
+      this.listCache[key].loaded = true;
+      const cacheValue = value.map(snap => {
+        const priority = usePriority ? snap.getPriority() : null;
+        return unwrap(snap.key, snap.val(), () => !isNil(snap.val()), priority);
+      });
+      if (this.processing.current) {
+        this.processing.listCache[key] = cacheValue;
+      } else {
+        this.listCache[key].sub.uniqueNext( cacheValue );
+      }
+      this.setList(key, value);
+    });
+
+    this.listCache[key].sub.complete = subscription.unsubscribe();
+  }
   /**
    * Retrives a list if locally stored on the device
    * - Lists are stored as individual objects, to allow for better offline reuse.
@@ -344,34 +371,6 @@ export class AngularFireOfflineDatabase {
 
     this.listCache[key].firebaseOptions = newOptions;
     return JSON.stringify(initialOptions) !== JSON.stringify(newOptions);
-  }
-  private getListFirebase(key: string) {
-    const options =  this.listCache[key].firebaseOptions;
-    if (this.listCache[key].sub) {
-      this.listCache[key].sub.complete();
-    }
-    const usePriority = options && options.query && options.query.orderByPriority;
-    // Get Firebase ref
-    const ref: FirebaseListObservable<any[]> = this.af.list(key, options);
-    // Create cache
-    this.listCache[key].sub = new InternalListObservable(ref, this.localUpdateService);
-
-    // Firebase
-    const subscription = ref.subscribe(value => {
-      this.listCache[key].loaded = true;
-      const cacheValue = value.map(snap => {
-        const priority = usePriority ? snap.getPriority() : null;
-        return unwrap(snap.key, snap.val(), () => !isNil(snap.val()), priority);
-      });
-      if (this.processing.current) {
-        this.processing.listCache[key] = cacheValue;
-      } else {
-        this.listCache[key].sub.uniqueNext( cacheValue );
-      }
-      this.setList(key, value);
-    });
-
-    this.listCache[key].sub.complete = subscription.unsubscribe();
   }
 }
 /**
