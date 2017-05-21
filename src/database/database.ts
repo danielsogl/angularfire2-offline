@@ -336,9 +336,7 @@ export class AngularFireOfflineDatabase {
       this.getListFirebase(key);
     }
     // Local
-    if (!this.listCache[key].loaded) {
-      this.getListLocal(key);
-    }
+    this.getListLocal(key);
   }
   /**
    * Processes cache items that require emulation
